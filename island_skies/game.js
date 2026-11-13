@@ -107,6 +107,7 @@ if(!profile.owned.includes(0))profile.owned.unshift(0);
 if(!profile.owned.includes(profile.selected))profile.selected=0;
 profile.raceBest=(saved.raceBest&&typeof saved.raceBest==='object')?saved.raceBest:{};
 profile.championClaimed=!!saved.championClaimed;
+profile.simMode=saved.simMode===false?false:true; // On by default in the Simulator Edition. Easy Mode is one click away.
 const oldAirline=(saved.airline&&typeof saved.airline==='object')?saved.airline:{};
 profile.airline={
  pilots:Array.isArray(oldAirline.pilots)?oldAirline.pilots.filter(v=>v&&Number.isInteger(v.id)).slice(0,8):[],
@@ -164,7 +165,7 @@ function checkRarePlanes(){const unlocked=[{id:5,yes:profile.visited.length>=8},
 
 function persist(){try{localStorage.setItem(saveKey,JSON.stringify(profile))}catch(e){}}
 let planeId=profile.selected;
-let state={pos:local(islands[0],0,29,-islands[0].runwayLength*.38),heading:0,pitch:0,bank:0,throttle:0,speed:0,gear:true,onGround:true,brake:false,flightTime:0,cam:0,prevPos:V(),currentIsland:0};
+let state={pos:local(islands[0],0,29,-islands[0].runwayLength*.38),heading:0,pitch:0,bank:0,throttle:0,speed:0,gear:true,onGround:true,brake:false,flightTime:0,cam:0,prevPos:V(),currentIsland:0,vspeed:0,flaps:0,trim:0,stall:false,autopilot:false,apHeading:0,apAltitude:250,landingVSpeed:0};
 let mission={from:0,to:1,visited:false,kind:'cargo'}; // Starter route; completed jobs lead to a fresh 3-choice board.
 let race={active:false,time:0,next:0,ai:[],start:0,course:1}; let emergency={active:false,airport:null,condition:null}; let atcClearance=false;
 // Each event gets ONE return point. A challenge is a temporary side activity,
@@ -270,7 +271,7 @@ const landmarks=[
 ].map((p,i)=>({id:i,name:p[0],x:(p[1]+100)*WORLD_SCALE,z:(p[2]-38)*WORLD_SCALE,kind:p[3]}));
 
 let W=0,H=0,DPR=1,focal=700,camPos=V(0,70,-200),camForward=V(0,0,1),camRight=V(1,0,0),camUp=V(0,1,0),now=0;
-function resize(){DPR=Math.min(1.7,window.devicePixelRatio||1);W=Math.max(320,innerWidth);H=Math.max(280,innerHeight);canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);focal=Math.min(W*.85,H*1.24)}
+function resize(){const mobile=window.matchMedia('(pointer:coarse)').matches;DPR=Math.min(mobile?(innerWidth<750?1.1:1.35):1.7,window.devicePixelRatio||1);W=Math.max(320,innerWidth);H=Math.max(280,innerHeight);canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);focal=Math.min(W*.85,H*1.24)}
 window.addEventListener('resize',resize);resize();
 function face(a,b,c,color,alpha=1,out){(out||this).push({a,b,c,color,alpha})}
 function addQuad(out,a,b,c,d,color,alpha=1){out.push({a,b,c,color,alpha},{a,b:c,c:d,color,alpha})}
@@ -642,7 +643,29 @@ function drawRaceTrack(){
  });
 }
 function drawLandmarkLabels(){for(const lm of landmarks){let d=Math.hypot(state.pos.x-lm.x,state.pos.z-lm.z);if(d>4600)continue;let q=project(V(lm.x,terrainHeight(lm.x,lm.z)+270,lm.z));if(!q||q.z>4600||q.x<70||q.x>W-70||q.y<80||q.y>H-90)continue;ctx.save();ctx.textAlign='center';ctx.font='900 13px system-ui';ctx.strokeStyle='#19344f';ctx.lineWidth=4;ctx.fillStyle='#fef6c3';ctx.strokeText('⭐ '+lm.name,q.x,q.y);ctx.fillText('⭐ '+lm.name,q.x,q.y);ctx.restore()}}
-function drawCockpit(){let y=H*.88;ctx.save();ctx.fillStyle='#17334adc';ctx.beginPath();ctx.moveTo(0,H);ctx.lineTo(0,H*.87);ctx.quadraticCurveTo(W*.5,H*.69,W,H*.87);ctx.lineTo(W,H);ctx.fill();ctx.strokeStyle='#83b7cb77';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,H*.87);ctx.quadraticCurveTo(W*.5,H*.69,W,H*.87);ctx.stroke();ctx.restore()}
+function drawCockpit(){
+ ctx.save();
+ const compact=W<650, sz=compact?Math.min(W*.95,370):Math.min(W*.70,640),mid=W*.5,bottom=H-6;
+ ctx.fillStyle='#0e2437e8';ctx.beginPath();ctx.moveTo(0,H);ctx.lineTo(0,H*.89);ctx.quadraticCurveTo(W*.5,H*.72,W,H*.89);ctx.lineTo(W,H);ctx.fill();
+ // An actual moving artificial horizon, with roll, pitch ladder, heading bug and vertical speed.
+ const r=compact?37:55,cx=mid-(compact?55:110),cy=bottom-(compact?48:76);
+ ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,TAU);ctx.clip();ctx.translate(cx,cy);ctx.rotate(-state.bank);
+ const py=clamp(state.pitch*180,-r*1.2,r*1.2);
+ ctx.fillStyle='#5da9c7';ctx.fillRect(-2*r,-2*r+py,4*r,2*r);
+ ctx.fillStyle='#9e6743';ctx.fillRect(-2*r,py,4*r,2*r);
+ ctx.strokeStyle='#faf7cf';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-r*2,py);ctx.lineTo(r*2,py);ctx.stroke();
+ for(const degrees of [-20,-10,10,20]){let off=py-degrees*1.3;if(Math.abs(off)>r*.92)continue;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-r*.34,off);ctx.lineTo(r*.34,off);ctx.stroke()}
+ ctx.restore();ctx.strokeStyle='#e5f8ff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,r,0,TAU);ctx.stroke();
+ ctx.strokeStyle='#ffe3a6';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx-r*.5,cy);ctx.lineTo(cx-r*.16,cy);ctx.lineTo(cx,cy+6);ctx.lineTo(cx+r*.16,cy);ctx.lineTo(cx+r*.5,cy);ctx.stroke();
+ const rows=compact?3:4;const tx=mid+(compact?12:20),ty=bottom-(compact?81:120);const lh=compact?17:23;
+ ctx.textAlign='left';ctx.font=(compact?'bold 11px':'bold 15px')+' ui-monospace,monospace';
+ ctx.fillStyle='#a8e9f5';ctx.fillText('IAS  '+fmt(state.speed*1.94)+' kt',tx,ty+lh);
+ ctx.fillText('ALT  '+fmt(Math.max(0,state.pos.y-29)*3.281)+' ft',tx,ty+lh*2);
+ ctx.fillStyle=state.stall?'#ffc259':'#a8f5b7';ctx.fillText('V/S  '+(state.vspeed>=0?'+':'')+fmt(state.vspeed*196.85),tx,ty+lh*3);
+ if(rows===4){ctx.fillStyle='#f4e6ad';ctx.fillText('HDG  '+String(Math.round(deg(state.heading))).padStart(3,'0')+'°',tx,ty+lh*4)}
+ ctx.restore();
+}
+
 function runwayOffset(is,p){let dx=p.x-is.x,dz=p.z-is.z,c=Math.cos(is.heading),s=Math.sin(is.heading);return {x:dx*c-dz*s,z:dx*s+dz*c}}
 function airportAt(p,range=1){let selected=null,dist0=Infinity;for(const is of islands){if(Math.abs(is.x-p.x)>950||Math.abs(is.z-p.z)>950)continue;let q=runwayOffset(is,p),width=is.id===0?77:52;if(Math.abs(q.x)<width*range&&Math.abs(q.z)<is.runwayLength*.53*range){let dd=d2(is,p);if(dd<dist0){selected=is;dist0=dd}}}return selected}
 function nearestIsland(p){let best=islands[0],bestD=Infinity;for(let is of islands){let dd=d2(is,p);if(dd<bestD){best=is;bestD=dd}}return {is:best,d:bestD}}
@@ -674,7 +697,7 @@ function beginWorldRoute(from,to,kind='passenger'){
  const dep=islands[from],arrival=islands[to];
  // Selecting an international departure is an explicit travel choice, not an activity.
  if(race.active||emergency.active)returnToFlight('↩ Returned to your flight before selecting a route.');
- state.pos=local(dep,0,29,-dep.runwayLength*.34);state.prevPos=V(state.pos.x,state.pos.y,state.pos.z);state.heading=0;state.pitch=0;state.bank=0;state.speed=0;state.throttle=0;state.gear=true;state.onGround=true;state.currentIsland=from;state.brake=true;
+ state.pos=local(dep,0,29,-dep.runwayLength*.34);state.prevPos=V(state.pos.x,state.pos.y,state.pos.z);state.heading=0;state.pitch=0;state.bank=0;state.speed=0;state.throttle=0;state.gear=true;state.onGround=true;state.currentIsland=from;state.brake=true;state.vspeed=0;state.flaps=0;state.trim=0;state.stall=false;state.autopilot=false;
  camPos=add(state.pos,V(0,45,-130));mission={from,to,kind,visited:false};expressCruise=2;updateTravelHUD();closeModal();persist();updateHUD();
  setToast('🌍 '+dep.name+' → '+arrival.name+'! Take off, then EXPRESS ×30 follows the route. Switch with K.',7)
 }
@@ -725,7 +748,7 @@ function returnToFlight(message='↩ Back to exactly where you were flying!'){
 function landingQuality(){
  // Smooth, centered approaches score highest. Designed to be achievable in a trainer.
  const ideal=Math.min(42,planes[planeId].max*.54);
- return Math.round(clamp(100-Math.abs(state.speed-ideal)*1.05-Math.abs(state.pitch)*135-Math.abs(state.bank)*95-(atcClearance?0:5),0,100));
+ return Math.round(clamp(100-Math.abs(state.speed-ideal)*1.05-Math.abs(state.pitch)*135-Math.abs(state.bank)*95-(profile.simMode?Math.max(0,Math.abs(state.landingVSpeed)-3)*3.4:0)-(atcClearance?0:5),0,100));
 }
 function afterLanding(is){
  const score=landingQuality();
@@ -746,7 +769,7 @@ function afterLanding(is){
   returnToFlight(success?'🏅 '+condition.toUpperCase()+' CHALLENGE COMPLETE! Landing '+score+'/100 · Back to your flight.':'🛬 Wrong airport — returned to your original flight.');
   return;
  }
- state.onGround=true;state.pos.y=29;state.pitch=0;state.bank=0;state.throttle=Math.min(state.throttle,.2);state.speed=Math.min(state.speed,24);state.currentIsland=is.id;
+ state.onGround=true;state.pos.y=29;state.pitch=0;state.bank=0;state.vspeed=0;state.stall=false;state.autopilot=false;state.throttle=Math.min(state.throttle,.2);state.speed=Math.min(state.speed,24);state.currentIsland=is.id;
  profile.landings++;profile.xp+=35;profile.goodLandings++;
  profile.bestLanding=Math.max(profile.bestLanding,score);
  if(score>=98)profile.perfectLandings++;
@@ -763,7 +786,7 @@ function startRace(id=1){if(race.active){setToast('Already racing!');return}if(p
  closeModal();
  race={active:true,time:0,next:0,ai:[{name:'Maverick',progress:0,rate:.172},{name:'Sky Fox',progress:0,rate:.155},{name:'Ace',progress:0,rate:.183}],start:performance.now(),course:id};
  state.onGround=false;state.pos=V(raceStart.x,raceStart.y,raceStart.z);state.heading=courseBearing(state.pos,raceRings[0]);
- state.pitch=.04;state.bank=0;state.speed=Math.max(58,Math.min(state.speed,92));state.throttle=Math.max(state.throttle,.78);state.gear=false;
+ state.pitch=.04;state.bank=0;state.vspeed=0;state.speed=Math.max(58,Math.min(state.speed,92));state.throttle=Math.max(state.throttle,.78);state.gear=false;
  updateReturnButton();setToast('🏁 '+islands[id].name.toUpperCase()+' RACE! Clear 9 rings, then return to your previous flight.',5);
 }
 function finishRace(){let rank=1+race.ai.filter(ai=>ai.progress>=raceRings.length-1).length;let prize=rank===1?2200:rank===2?1100:rank===3?650:300;let xp=rank===1?360:190;
@@ -778,7 +801,7 @@ const DAY_PHASE_SECONDS=1800;
 let dayClock=0;
 function tickDayNight(dt){const before=Math.floor(dayClock/DAY_PHASE_SECONDS);dayClock+=dt;const after=Math.floor(dayClock/DAY_PHASE_SECONDS);if(after!==before)setToast(after%2?'🌙 Night has fallen — watch the runway lights!':'☀️ Sunrise — daytime flying!',6)}
 function nightAmount(){const phase=dayClock%3600;const edge=110;return phase<1800?clamp((phase-1800+edge)/edge,0,1):clamp((3600-phase)/edge,0,1)}
-function updateDayHUD(){const night=Math.floor(dayClock/1800)%2===1;const remain=1800-dayClock%1800;const el=$('dayTimer');if(el)el.textContent=(night?'🌙 NIGHT':'☀️ DAY')+' · '+Math.floor(remain/60)+':'+String(Math.ceil(remain%60)).padStart(2,'0')}
+function updateDayHUD(){const night=Math.floor(dayClock/1800)%2===1;const remain=1800-dayClock%1800;const el=$('dayTimer');if(el)el.textContent=(night?'🌙 NIGHT':'☀️ DAY')+' · '+Math.floor(remain/60)+':'+String(Math.floor(remain%60)).padStart(2,'0')}
 // Five-minute in-game weather cycle. Weather never causes engine failures.
 const WEATHER_DURATION=300;
 const WEATHER_TYPES=[
@@ -799,6 +822,64 @@ function weatherVisuals(){const w=currentWeather();if(w.visibility===1)return;
  if(w.rain){ctx.strokeStyle='rgba(209,231,251,.5)';ctx.lineWidth=1.3;const count=Math.floor(65*w.rain);for(let i=0;i<count;i++){let x=((i*137.31+now*170)% (W+80))-40,y=((i*79.13+now*360)%(H+100))-50;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-8*w.rain,y+18*w.rain);ctx.stroke()}}
  ctx.restore()}
 function updateWeatherHUD(){let w=currentWeather(),seconds=Math.max(0,Math.ceil(WEATHER_DURATION-weatherElapsed));$('weatherIcon').textContent=w.icon;$('weatherName').textContent=w.name;$('weatherEffect').textContent=w.info;$('weatherTimer').textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');$('weatherFill').style.width=(100*(WEATHER_DURATION-weatherElapsed)/WEATHER_DURATION)+'%'}
+
+// V13: a lightweight, game-scaled aerodynamic simulation. This is not a flight-training tool.
+// Airspeed determines whether a wing can support the aircraft. Flaps change stall speed and
+// drag; gear increases drag. Pitch trades horizontal speed for climb; trim sets hands-off pitch.
+function stallSpeed(config){return config.max*(.35-state.flaps*.035)}
+function headingError(target,current){return Math.atan2(Math.sin(target-current),Math.cos(target-current))}
+function toggleSimMode(){profile.simMode=!profile.simMode;state.vspeed=0;state.stall=false;state.autopilot=false;persist();updateSimulatorUI();setToast(profile.simMode?'🛩️ SIMULATOR MODE: lift, drag, stalls and flaps active.':'🎮 EASY MODE: forgiving arcade-style handling.',5)}
+function cycleFlaps(){state.flaps=(state.flaps+1)%3;state.autopilot=false;setToast('🛬 FLAPS '+['UP','15°','30°'][state.flaps],2);updateSimulatorUI()}
+function toggleAutopilot(){
+ if(!profile.simMode){setToast('Switch to SIM mode to use the autopilot.');return}
+ if(state.onGround||state.stall){setToast('⚠️ Autopilot requires safe airborne flight.');return}
+ state.autopilot=!state.autopilot;state.apHeading=state.heading;state.apAltitude=state.pos.y;
+ setToast(state.autopilot?'🧭 AUTOPILOT ON · holding current altitude and heading.':'🧭 AUTOPILOT OFF · manual controls.',3);updateSimulatorUI();
+}
+function adjustTrim(direction){state.trim=clamp(state.trim+direction*.035,-.20,.20);setToast('Elevator trim '+Math.round(state.trim*100)+'%',1.5);updateSimulatorUI()}
+function updateSimulatorUI(){
+ const mode=$('simModeButton');if(mode){mode.textContent=profile.simMode?'🛩 SIM · 1':'🎮 EASY · 1';mode.classList.toggle('active',profile.simMode)}
+ const mobile=$('mobileSim');if(mobile)mobile.textContent=profile.simMode?'🛩 SIM':'🎮 EASY';
+ const flapButton=$('mobileFlaps');if(flapButton)flapButton.textContent='🛬 FLAPS '+['0°','15°','30°'][state.flaps];
+ const ap=$('mobileAutopilot');if(ap)ap.textContent=state.autopilot?'🧭 AP ON':'🧭 AP OFF';
+ const f=$('flapText');if(f)f.textContent=['UP','15°','30°'][state.flaps];
+ const tr=$('trimText');if(tr)tr.textContent=Math.round(state.trim*100)+'%';
+ const apState=$('autopilotText');if(apState)apState.textContent=state.autopilot?'AP ON':'AP OFF';
+ const modeLabel=$('simModeText');if(modeLabel)modeLabel.textContent=profile.simMode?'SIMULATOR':'EASY';
+ const vs=$('vsiText');if(vs)vs.textContent=(state.vspeed>=0?'+':'')+fmt(state.vspeed*196.85);
+ const air=$('aircraftAlert');if(air){const text=state.stall&&!state.onGround?'⚠️ STALL · LOWER NOSE + POWER':!state.onGround&&state.speed>planes[planeId].max*.94?'⚠️ HIGH AIRSPEED':state.flaps===2&&state.speed>planes[planeId].max*.64?'⚠️ RETRACT FLAPS':'✓ FLIGHT NORMAL';air.textContent=text;air.classList.toggle('warn',text.startsWith('⚠️'))}
+}
+function simulatorPhysics(dt,config,wx,maxSpeed,pitchInput,yawInput,bankInput){
+ if(state.autopilot&&(Math.abs(pitchInput)>0||Math.abs(yawInput)>0||Math.abs(bankInput)>0)){
+  state.autopilot=false;setToast('🧭 AP disconnected: manual controls!',2);
+ }
+ const speed=state.speed;
+ const stall=stallSpeed(config);
+ // Bank and trim respond smoothly to physical controls.
+ let bankTarget=state.autopilot?clamp(headingError(state.apHeading,state.heading)*1.9,-.30,.30):clamp(bankInput*.58+yawInput*.20,-.7,.7);
+ state.bank=mix(state.bank,bankTarget,clamp(dt*1.45,0,1));
+ const trimPitch=state.trim*.65;
+ let targetPitch=state.autopilot?clamp((state.apAltitude-state.pos.y)*.0038,-.20,.20):clamp(pitchInput*.26+trimPitch,-.32,.32);
+ state.pitch=mix(state.pitch,targetPitch,clamp(dt*1.3,0,1));
+ // Increased bank creates load factor; stalls arrive sooner in steep turns.
+ const loadFactor=1+Math.abs(state.bank)*.27;
+ state.stall=speed<stall*loadFactor&&state.pos.y>32;
+ if(state.stall){state.autopilot=false;state.pitch=mix(state.pitch,-.14,clamp(dt*.7,0,1));}
+ // Throttle cannot instantly make the airplane cruise at top speed.
+ const engineTarget=state.throttle*maxSpeed;
+ const drag=(state.gear?2.8:0)+state.flaps*3.3+Math.abs(state.bank)*4.3+Math.max(0,state.pitch)*14;
+ const acceleration=(engineTarget-speed)*.23-drag-(state.brake?13:0);
+ state.speed=clamp(speed+acceleration*dt,8,maxSpeed);
+ const availableLift=clamp((state.speed/stall-1)*.24,-1.2,.9);
+ const liftClimb=Math.sin(state.pitch)*state.speed*.66+availableLift*3.8-Math.abs(state.bank)*2.3;
+ const desiredVSpeed=state.stall?-6.7-Math.max(0,stall-state.speed)*1.25:liftClimb;
+ state.vspeed=mix(state.vspeed,desiredVSpeed,clamp(dt*.92,0,1));
+ state.pos.y+=state.vspeed*dt;
+ const steering=(yawInput*.17+Math.sin(state.bank)*.43)*config.turn*wx.turn*(.5+Math.min(1,state.speed/Math.max(1,config.cruise))*.5);
+ state.heading+=steering*dt;
+ state.heading+=Math.sin(now*.73+weatherChanges*2)*wx.gust*.008*dt;
+ if(state.stall&&performance.now()>shownToastUntil)setToast('⚠️ STALL! Lower the nose and add throttle to recover.',2.2);
+}
 function updatePhysics(dt){state.prevPos=V(state.pos.x,state.pos.y,state.pos.z);let config=planes[planeId];
  const accelerating=keys.has('KeyW'),reducing=keys.has('KeyS');
  if(accelerating)state.throttle=clamp(state.throttle+dt*.42,0,1);
@@ -809,11 +890,13 @@ function updatePhysics(dt){state.prevPos=V(state.pos.x,state.pos.y,state.pos.z);
  const bankInput=(keys.has('KeyD')?1:0)-(keys.has('KeyA')?1:0);
  let maxSpeed=race.active?Math.min(config.max,118):config.max;
  const wx=currentWeather(); // Keep the aircraft engine speed exactly unchanged.
- if(state.onGround){let acceleration=state.throttle*config.accel*1.75-state.speed*.065-(state.brake?35:0);
+ if(state.onGround){state.stall=false;state.vspeed=0;state.autopilot=false;let acceleration=state.throttle*config.accel*(profile.simMode?1.05:1.75)-state.speed*.065-(state.brake?35:0);
  state.speed=clamp(state.speed+acceleration*dt,0,maxSpeed*.68);
  state.heading+=yawInput*dt*(state.speed>5?.48:.16);
  state.bank=mix(state.bank,0,clamp(dt*4,0,1));state.pitch=0;
- if(pitchInput>0&&state.speed>config.max*.38){state.onGround=false;state.pos.y+=3.2;state.pitch=.1;state.speed=Math.max(state.speed,28);setToast('🛫 Airborne! Follow the golden destination marker.',3.1)}
+ if(pitchInput>0&&state.speed>(profile.simMode?stallSpeed(config)*1.13:config.max*.38)){state.onGround=false;state.pos.y+=3.2;state.pitch=.1;state.speed=Math.max(state.speed,28);state.vspeed=3.5;setToast('🛫 Airborne! Keep your airspeed above the stall speed.',3.1)}
+ }else if(profile.simMode){
+ simulatorPhysics(dt,config,wx,maxSpeed,pitchInput,yawInput,bankInput);
  }else{
  let targetSpeed=state.throttle*maxSpeed;
  let acceleration=(targetSpeed-state.speed)*.38;
@@ -822,12 +905,13 @@ function updatePhysics(dt){state.prevPos=V(state.pos.x,state.pos.y,state.pos.z);
  let targetBank=clamp(bankInput*.5+yawInput*.32,-.72,.72);
  state.bank=mix(state.bank,targetBank,clamp(dt*2.2,0,1));
  state.heading+=(yawInput*.48+Math.sin(state.bank)*.46)*config.turn*(1+profile.upgrades.handling*.08)*wx.turn*dt*(.62+state.speed/maxSpeed*.38);
- // Weather introduces gentle to strong sideways drift and turbulence only in the air.
  state.heading+=Math.sin(now*.73+weatherChanges*2)*wx.gust*.008*dt;
  let pitchTarget=clamp(pitchInput*.25,-.28,.36);
  state.pitch=mix(state.pitch,pitchTarget,clamp(dt*1.5,0,1));
  const lift=Math.sin(state.pitch)*state.speed*.74+(state.speed<config.max*.28?-2.2:0);
+ state.vspeed=lift;
  state.pos.y+=lift*dt;
+ state.stall=false;
  }
  if(!state.onGround){state.pos.x+=(wx.wind*Math.sin(now*.17+.8)+Math.sin(now*2.7)*wx.gust)*dt;state.pos.z+=(wx.wind*Math.cos(now*.19+1.3)+Math.cos(now*2.1)*wx.gust)*dt;state.pos.y+=Math.sin(now*3.1)*wx.gust*.42*dt;}
  state.pos.x+=Math.sin(state.heading)*state.speed*dt;
@@ -836,8 +920,8 @@ function updatePhysics(dt){state.prevPos=V(state.pos.x,state.pos.y,state.pos.z);
  if(!state.onGround){
  let landing=airportAt(state.pos,1.13),ground=landing?29:nearGroundHeight(state.pos);
  if(state.pos.y<=ground){
- if(landing&&state.gear&&state.speed<Math.max(75,config.max*(.52+profile.upgrades.landing*.07))&&Math.abs(state.pitch)<.25){afterLanding(landing)}
- else {state.pos.y=Math.max(ground+4,30);state.pitch=.12;state.speed=Math.max(state.speed*.85,25);if(performance.now()>shownToastUntil)setToast(landing?'⚠️ Slow down and LOWER GEAR to land!':'⚠️ Find an airport runway for a safe landing!',2)}
+ if(landing&&state.gear&&state.speed<Math.max(75,config.max*(.52+profile.upgrades.landing*.07))&&Math.abs(state.pitch)<.25){state.landingVSpeed=state.vspeed;afterLanding(landing)}
+ else {state.pos.y=Math.max(ground+4,30);state.pitch=.12;state.vspeed=4;state.speed=Math.max(state.speed*.85,25);if(performance.now()>shownToastUntil)setToast(landing?'⚠️ Slow down and LOWER GEAR to land!':'⚠️ Find an airport runway for a safe landing!',2)}
  }
  }
  state.pos.y=clamp(state.pos.y,1,1600);
@@ -852,7 +936,7 @@ function updatePhysics(dt){state.prevPos=V(state.pos.x,state.pos.y,state.pos.z);
 function nearGroundHeight(pos){return terrainHeight(pos.x,pos.z)+5}
 function atcCall(){let ap=nearestIsland(state.pos).is;atcClearance=true;setToast(state.onGround?'📻 ATC: '+ap.name+' tower — cleared for takeoff!':'📻 ATC: '+ap.name+' tower — cleared to land. Gear down, reduce speed!',5)}
 function beginLandingChallenge(cond){closeModal();if(race.active||emergency.active)returnToFlight('Previous event ended.');rememberFlight();const ap=islands[cond==='fog'?0:cond==='wind'?7:6];let start=local(ap,0,245,-1800);
- state.pos=start;state.heading=0;state.pitch=-.09;state.speed=65;state.throttle=.48;state.gear=true;state.onGround=false;state.currentIsland=ap.id;
+ state.pos=start;state.heading=0;state.pitch=-.09;state.speed=65;state.vspeed=-4;state.throttle=.48;state.gear=true;state.onGround=false;state.currentIsland=ap.id;
  emergency={active:true,airport:ap.id,condition:cond,startTime:state.flightTime};atcClearance=true;race.active=false;
  weatherIndex=cond==='fog'?4:cond==='wind'?2:5;weatherElapsed=0;
  updateReturnButton();setToast('⚠️ CHALLENGE: '+cond.toUpperCase()+'! Land at '+ap.name+'; return to your flight afterward.',6)}
@@ -876,7 +960,7 @@ function updateHUD(){let level=Math.max(1,Math.floor(Math.sqrt(profile.xp/95))+1
  $('flightStatus').style.background=state.onGround?'#ffe082':'#49f0b4';
  $('speedText').textContent=fmt(state.speed*1.94);$('altText').textContent=fmt(Math.max(0,state.pos.y-29)*3.281);
  $('headingText').textContent=String(Math.round(deg(state.heading))).padStart(3,'0');
- $('throttleText').textContent=Math.round(state.throttle*100)+'%';$('throttleFill').style.width=(state.throttle*100)+'%';
+ $('throttleText').textContent=Math.round(state.throttle*100)+'%';$('throttleFill').style.width=(state.throttle*100)+'%';updateSimulatorUI();
  $('gearText').textContent=state.gear?'GEAR DOWN':'GEAR UP';$('cameraText').textContent=['CHASE CAMERA','FAR CAMERA','COCKPIT VIEW'][state.cam];
  const near=nearestIsland(state.pos);$('rankTag').textContent=pilotTitle()+' · '+profile.visited.length+'/'+islands.length+' airports';$('locationText').textContent=(near.d<near.is.r*1.5?near.is.name.toUpperCase()+' AIRSPACE' : (isUSLand(state.pos.x,state.pos.z)?'OVER LAND':'OVER WATER'))+(state.onGround?' · PARKED':'');
  $('targetArrow').classList.toggle('hidden',!dest);
@@ -977,7 +1061,7 @@ function showModal(type){modalType=type;$('modal').classList.remove('hidden');le
  <p class="subhead">${escapeHTML(multiplayer.message)}</p><p class="subhead">Host setup instructions are in <b>ONLINE_FRIENDS.txt</b>. No server is running automatically when you open the ZIP.</p>`;
  }else if(type==='help'){
  content=`<h2>🎮 Pilot Training</h2><p class="subhead">Fly like a pro. Practice takeoffs, smooth turns, and safe landings. No engine failures or random breakdowns.</p><div class="helpGrid">`+
- [['W / S','Increase / decrease throttle'],['↑ / ↓','Pitch nose up / down'],['← / →','Steer airplane left / right'],['A / D','Bank left / right'],['G','Toggle landing gear'],['C','Change chase / far / cockpit camera'],['SPACE','Hold wheel brake / airbrake'],['E or H','Open hangar'],['M','Open U.S. map'],['J','Open flight contracts'],['R','Open five-course racing championship'],['P','Pilot career, visited state passport'],['B','Weather landing academy'],['T','Talk to air traffic control'],['V','Spot a nearby AI airplane for ten seconds'],['X','Leave race / challenge and return to your flight'],['Y','Manage your airline and AI pilots'],['U','Buy and upgrade airports'],['O','Multiplayer rooms (needs server)'],['F','Return to Maryland airport']].map(x=>`<div><b>${x[0]}</b><span>${x[1]}</span></div>`).join('')+'</div><p class="helpFooter"><b>TAKEOFF:</b> Hold W to reach 60+ knots, then hold ↑ to lift off. <b>FLIGHT:</b> Point toward your destination, add throttle, and climb. <b>LAND:</b> Return to a runway, lower GEAR with G, slow down, and descend gently by pressing ↓. <b>RACE:</b> Fly through all nine bright rings in order. Winning earns bonus cash!</p>';
+ [['1','Toggle SIMULATOR / EASY flight model'],['2','Cycle flaps UP / 15° / 30°'],['3','Autopilot: heading and altitude hold'],['Q / Z','Adjust elevator trim'],['SIM cockpit','Press C until cockpit view: attitude indicator, IAS, altitude, vertical speed'],['W / S','Increase / decrease throttle'],['↑ / ↓','Pitch nose up / down'],['← / →','Steer airplane left / right'],['A / D','Bank left / right'],['G','Toggle landing gear'],['C','Change chase / far / cockpit camera'],['SPACE','Hold wheel brake / airbrake'],['E or H','Open hangar'],['M','Open U.S. map'],['J','Open flight contracts'],['R','Open five-course racing championship'],['P','Pilot career, visited state passport'],['B','Weather landing academy'],['T','Talk to air traffic control'],['V','Spot a nearby AI airplane for ten seconds'],['X','Leave race / challenge and return to your flight'],['Y','Manage your airline and AI pilots'],['U','Buy and upgrade airports'],['O','Multiplayer rooms (needs server)'],['F','Return to Maryland airport']].map(x=>`<div><b>${x[0]}</b><span>${x[1]}</span></div>`).join('')+'</div><p class="helpFooter"><b>TAKEOFF:</b> In SIM mode set FLAPS 15°, raise throttle, wait for takeoff airspeed, and gently pull ↑. Avoid a stall; fly with the nose level to gain speed. <b>FLIGHT:</b> Point toward your destination, add throttle, and climb. <b>LAND:</b> Return to a runway, lower GEAR with G, slow down, and descend gently by pressing ↓. <b>RACE:</b> Fly through all nine bright rings in order. Winning earns bonus cash!</p>';
  }
  $('modalContent').innerHTML=content;
  if(type==='map')drawMap();if(type==='shop')previewPlane(shopPreviewIndex);
@@ -1030,12 +1114,12 @@ function drawMap(){let c=$('gameMap');if(!c)return;let g=c.getContext('2d'),w=c.
  g.save();g.translate(a,b);g.rotate(-state.heading);g.fillStyle='#fff';g.beginPath();g.moveTo(0,-11);g.lineTo(8,10);g.lineTo(0,4);g.lineTo(-8,10);g.closePath();g.fill();g.restore();
 }
 function closeModal(){modalType='';$('modal').classList.add('hidden')}
-function recover(){race.active=false;emergency.active=false;eventReturn=null;portalReady=false;updateReturnButton();let is=islands[0];state.pos=local(is,0,29,-is.runwayLength*.35);state.heading=0;state.pitch=0;state.bank=0;state.throttle=0;state.speed=0;state.onGround=true;state.gear=true;state.currentIsland=0;closeModal();setToast('🏠 Back at Maryland airport.');}
-const keyActions={KeyL:()=>showModal('routes'),KeyK:cycleCruise,KeyN:()=>cycleRadar(0),KeyM:()=>showModal('map'),KeyJ:()=>showModal('jobs'),KeyH:()=>showModal('shop'),KeyE:()=>showModal('shop'),KeyC:()=>{state.cam=(state.cam+1)%3;setToast(['Chase camera','Far chase camera','Cockpit view'][state.cam],1.5)},KeyG:()=>{state.gear=!state.gear;setToast(state.gear?'Landing gear DOWN':'Landing gear UP',1.5)},KeyR:()=>showModal('race'),KeyT:atcCall,KeyV:spotNearestAI,KeyP:()=>showModal('career'),KeyB:()=>showModal('challenges'),KeyX:()=>{if(race.active||emergency.active)returnToFlight('↩ Challenge or race canceled — back to your flight!')},KeyY:()=>showModal('airline'),KeyU:()=>showModal('airports'),KeyO:()=>showModal('multiplayer'),KeyF:()=>{if(confirm('Return to Maryland airport? Your cash and owned planes stay saved.'))recover()},Escape:()=>closeModal()};
+function recover(){race.active=false;emergency.active=false;eventReturn=null;portalReady=false;updateReturnButton();let is=islands[0];state.pos=local(is,0,29,-is.runwayLength*.35);state.heading=0;state.pitch=0;state.bank=0;state.throttle=0;state.speed=0;state.onGround=true;state.gear=true;state.vspeed=0;state.flaps=0;state.autopilot=false;state.currentIsland=0;closeModal();setToast('🏠 Back at Maryland airport.');}
+const keyActions={Digit1:toggleSimMode,Digit2:cycleFlaps,Digit3:toggleAutopilot,KeyQ:()=>adjustTrim(-1),KeyZ:()=>adjustTrim(1),KeyL:()=>showModal('routes'),KeyK:cycleCruise,KeyN:()=>cycleRadar(0),KeyM:()=>showModal('map'),KeyJ:()=>showModal('jobs'),KeyH:()=>showModal('shop'),KeyE:()=>showModal('shop'),KeyC:()=>{state.cam=(state.cam+1)%3;setToast(['Chase camera','Far chase camera','Cockpit view'][state.cam],1.5)},KeyG:()=>{state.gear=!state.gear;setToast(state.gear?'Landing gear DOWN':'Landing gear UP',1.5)},KeyR:()=>showModal('race'),KeyT:atcCall,KeyV:spotNearestAI,KeyP:()=>showModal('career'),KeyB:()=>showModal('challenges'),KeyX:()=>{if(race.active||emergency.active)returnToFlight('↩ Challenge or race canceled — back to your flight!')},KeyY:()=>showModal('airline'),KeyU:()=>showModal('airports'),KeyO:()=>showModal('multiplayer'),KeyF:()=>{if(confirm('Return to Maryland airport? Your cash and owned planes stay saved.'))recover()},Escape:()=>closeModal()};
 document.addEventListener('keydown',e=>{let code=e.code;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(code))e.preventDefault();if(!keys.has(code)&&!isPaused&&modalType===''&&keyActions[code])keyActions[code]();else if(code==='Escape')closeModal();keys.add(code)});
 document.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
-$('playButton').addEventListener('click',()=>{$('splash').classList.add('hidden');$('hud').classList.remove('hidden');isPaused=false;camPos=add(state.pos,V(0,48,-130));setToast('✈ 6 AI planes near your airport! Press V to spot one. W accelerates; ↑ takes off.',5)});
-$('routeButton').addEventListener('click',()=>showModal('routes'));$('cruiseToggle').addEventListener('click',cycleCruise);$('radarPlus').addEventListener('click',()=>cycleRadar(-1));$('radarMinus').addEventListener('click',()=>cycleRadar(1));$('radarExpand').addEventListener('click',()=>{$('radar').classList.toggle('expandedRadar');drawRadar()});
+$('playButton').addEventListener('click',()=>{$('splash').classList.add('hidden');$('hud').classList.remove('hidden');isPaused=false;camPos=add(state.pos,V(0,48,-130));setToast('🛩 SIM MODE: throttle up, reach safe takeoff speed, pull up gently. Use FLAPS 15° for takeoff. Press 1 for EASY mode.',7)});
+$('simModeButton').addEventListener('click',toggleSimMode);$('routeButton').addEventListener('click',()=>showModal('routes'));$('cruiseToggle').addEventListener('click',cycleCruise);$('radarPlus').addEventListener('click',()=>cycleRadar(-1));$('radarMinus').addEventListener('click',()=>cycleRadar(1));$('radarExpand').addEventListener('click',()=>{$('radar').classList.toggle('expandedRadar');drawRadar()});
 $('jobsButton').addEventListener('click',()=>showModal('jobs'));
  $('airlineButton').addEventListener('click',()=>showModal('airline'));
  $('airportButton').addEventListener('click',()=>showModal('airports'));
@@ -1055,13 +1139,35 @@ $('quitRace').addEventListener('click',()=>returnToFlight('↩ Race canceled —
  $('skyEventAccept').addEventListener('click',skyAccept);
  $('skyEventSkip').addEventListener('click',skySkip);
 $('closeModal').addEventListener('click',closeModal);document.querySelector('.modalback').addEventListener('click',closeModal);
-for(let b of document.querySelectorAll('[data-key]')){const key=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys.add(key);b.setPointerCapture(e.pointerId)});for(let ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>keys.delete(key))}
+// V12 touch controls: pointer capture keeps a held input working even if the thumb slides.
+for(let b of document.querySelectorAll('[data-key]')){const key=b.dataset.key;
+ b.addEventListener('pointerdown',e=>{e.preventDefault();keys.add(key);try{b.setPointerCapture(e.pointerId)}catch(_){}});
+ for(let ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>keys.delete(key));
+}
+const joystick=$('touchJoystick'),knob=$('stickKnob');let joyPointer=null;
+const steerKeys=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+function steerFromPointer(e){const r=joystick.getBoundingClientRect();let dx=(e.clientX-r.left-r.width/2)/(r.width*.38),dy=(e.clientY-r.top-r.height/2)/(r.height*.38);const len=Math.hypot(dx,dy);if(len>1){dx/=len;dy/=len}knob.style.transform='translate(calc(-50% + '+(dx*33)+'px),calc(-50% + '+(dy*33)+'px))';
+ const active=new Set();if(dy<-.22)active.add('ArrowUp');if(dy>.22)active.add('ArrowDown');if(dx<-.22)active.add('ArrowLeft');if(dx>.22)active.add('ArrowRight');for(const key of steerKeys){if(active.has(key))keys.add(key);else keys.delete(key)}
+}
+function stopSteering(){joyPointer=null;knob.style.transform='translate(-50%,-50%)';for(const key of steerKeys)keys.delete(key)}
+joystick.addEventListener('pointerdown',e=>{if(joyPointer!==null)return;e.preventDefault();joyPointer=e.pointerId;try{joystick.setPointerCapture(e.pointerId)}catch(_){}steerFromPointer(e)});
+joystick.addEventListener('pointermove',e=>{if(e.pointerId===joyPointer){e.preventDefault();steerFromPointer(e)}});
+for(const ev of ['pointerup','pointercancel','lostpointercapture'])joystick.addEventListener(ev,e=>{if(e.pointerId===joyPointer)stopSteering()});
+window.addEventListener('blur',stopSteering);
+const mobileThrottle=$('touchThrottle');const mobileThrottleValue=$('mobileThrottleValue');
+mobileThrottle.addEventListener('input',()=>{state.throttle=clamp(Number(mobileThrottle.value)/100,0,1);mobileThrottleValue.textContent=Math.round(state.throttle*100)+'%'});
+mobileThrottle.addEventListener('change',()=>{state.throttle=clamp(Number(mobileThrottle.value)/100,0,1)});
 $('mobileGear').addEventListener('click',()=>{state.gear=!state.gear;setToast(state.gear?'Gear DOWN':'Gear UP')});
+$('mobileCamera').addEventListener('click',keyActions.KeyC);
+$('mobileCruise').addEventListener('click',cycleCruise);
+$('mobileRadar').addEventListener('click',()=>{$('radar').classList.toggle('expandedRadar');drawRadar()});$('mobileSim').addEventListener('click',toggleSimMode);$('mobileFlaps').addEventListener('click',cycleFlaps);$('mobileAutopilot').addEventListener('click',toggleAutopilot);
+function updateMobileStatus(){if(window.matchMedia('(pointer:coarse)').matches||innerWidth<=740){const el=$('mobileMissionStatus');if(el){const name=$('missionName').textContent||'World flight';const dist=$('missionDistance').textContent||'';el.textContent=name+' · '+dist}mobileThrottleValue.textContent=Math.round(state.throttle*100)+'%';if(document.activeElement!==mobileThrottle){mobileThrottle.value=String(Math.round(state.throttle*100))}}}
+
 let frame=0,lastTime=performance.now();function loop(t){let dt=clamp((t-lastTime)/1000,0,.058);lastTime=t;now=t/1000;
- try{if(!isPaused&&!modalType){tickWeather(dt);tickDayNight(dt);updatePhysics(dt);tickExpress(dt);tickAirline(dt);tickMultiplayer(dt);tickSkyEvents(dt)}if(!isPaused){setCamera(dt||.016);drawWorld();if(++frame%6===0){updateHUD();updateWeatherHUD();updateDayHUD();skyEventUI();checkRarePlanes()}if(modalType==='shop')previewPlane(shopPreviewIndex)}else{setCamera(.016);drawWorld()}
+ try{if(!isPaused&&!modalType){tickWeather(dt);tickDayNight(dt);updatePhysics(dt);tickExpress(dt);tickAirline(dt);tickMultiplayer(dt);tickSkyEvents(dt)}if(!isPaused){setCamera(dt||.016);drawWorld();if(++frame%6===0){updateHUD();updateWeatherHUD();updateDayHUD();updateMobileStatus();skyEventUI();checkRarePlanes()}if(modalType==='shop')previewPlane(shopPreviewIndex)}else{setCamera(.016);drawWorld()}
  if(shownToastUntil&&performance.now()>shownToastUntil){$('toast').classList.remove('show');shownToastUntil=0}}
  catch(e){console.error('Island Skies render/update issue:',e);let boot=$('bootError');boot.classList.remove('hidden');boot.textContent='Something went wrong drawing the game: '+e.message}
  requestAnimationFrame(loop)}
 // Draw the world behind the menu, and start the animation system.
-camPos=add(state.pos,V(0,45,-130));requestAnimationFrame(loop);
+camPos=add(state.pos,V(0,45,-130));updateSimulatorUI();requestAnimationFrame(loop);
 })();

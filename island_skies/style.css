@@ -94,3 +94,150 @@
  .cruiseToggle{left:auto;right:7px;bottom:160px}
 }
 @media(max-width:420px){#radar{width:min(177px,47vw)}.radarHeader{font-size:7px}.radarHeader button{width:19px;height:19px;font-size:12px}}
+
+/* WORLD SKIES V12: mobile & tablet-first flight cockpit. Override legacy narrow breakpoints. */
+html,body{overscroll-behavior:none}
+#game,#game canvas{touch-action:none}
+#mobileStatus{display:none}
+.splashMobileNote{display:none}
+#mobileControls .stickGuide{position:absolute;font-size:12px;color:#b7e2f2;pointer-events:none;font-weight:900}
+#mobileControls .stickGuide.up{top:8px;left:50%;transform:translateX(-50%)}
+#mobileControls .stickGuide.down{bottom:7px;left:50%;transform:translateX(-50%)}
+#mobileControls .stickGuide.left{left:8px;top:50%;transform:translateY(-50%)}
+#mobileControls .stickGuide.right{right:8px;top:50%;transform:translateY(-50%)}
+#mobileControls .stickKnob{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:45px;height:45px;border:2px solid #e9faff;background:linear-gradient(145deg,#4e9cc1,#145474);box-shadow:0 4px 13px #00162a;border-radius:50%;font-size:23px;pointer-events:none;transition:background .1s}
+#mobileControls .touchStick{position:relative;width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,#165470bd 0 26%,#092e4da8 27% 66%,#2e7195b3 67%);border:2px solid #8cd5f6aa;box-shadow:0 4px 16px #001f3869;touch-action:none;user-select:none;-webkit-user-select:none}
+#mobileControls .mobileLeftControls{display:flex;flex-direction:column;align-items:center;gap:5px}
+#mobileControls .bankBtns{display:flex;gap:5px}
+#mobileControls .bankBtns button{font-size:9px;padding:7px 9px;min-height:34px;border-radius:9px}
+#mobileControls .mobileRightControls{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+#mobileControls .mobileQuickActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;width:168px}
+#mobileControls .mobileQuickActions button{font-size:10px;min-height:39px;padding:5px 4px;white-space:nowrap}
+#mobileControls .mobileThrottle{width:168px;padding:8px 10px 7px;border-radius:12px;display:grid;grid-template-columns:1fr 58px;gap:2px 5px;align-items:center;pointer-events:auto}
+#mobileControls .mobileThrottle label{font-size:9px;letter-spacing:.6px;font-weight:900;display:flex;align-items:center;justify-content:space-between;grid-column:1/-1;white-space:nowrap}
+#mobileControls .mobileThrottle strong{color:#ffe184}
+#mobileControls input[type=range]{min-width:0;width:100%;height:30px;accent-color:#fbcf59;touch-action:none;cursor:pointer}
+#mobileControls .mobileThrottle #mobileBrake{font-size:10px;min-height:35px;padding:5px;border:1px solid #ffce83}
+#mobileControls button:active{background:#1e7593;transform:scale(.97)}
+@media (pointer:coarse), (max-width:740px){
+ body{height:100dvh}
+ #mobileControls{position:absolute;display:flex;align-items:flex-end;justify-content:space-between;bottom:calc(8px + env(safe-area-inset-bottom));left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right));z-index:9;pointer-events:none;gap:10px}
+ #mobileControls>div{pointer-events:auto}
+ .topbar{top:calc(5px + env(safe-area-inset-top));left:calc(7px + env(safe-area-inset-left));right:calc(7px + env(safe-area-inset-right));padding:5px 7px;gap:5px;display:flex;flex-wrap:wrap;min-height:0}
+ .brand{min-width:0;flex:1}.brand b{font-size:14px}.brand small{display:none}.brandIcon{width:26px;height:26px;border-radius:7px}
+ .topstat{display:flex;flex-direction:row;gap:3px;min-width:0}.topstat small{display:none}.topstat b{font-size:12px}
+ .xpwrap{display:none}
+ .topbar nav{display:flex!important;flex:1 0 100%;justify-content:flex-start;gap:5px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;min-width:0;margin:0;padding-bottom:2px}
+ .topbar nav::-webkit-scrollbar{display:none}
+ .navbtn{min-width:49px;min-height:38px;flex:0 0 auto;padding:5px 7px;font-size:13px;scroll-snap-align:start}
+ .navbtn span{display:none}
+ #mobileStatus{display:block;position:absolute;z-index:4;top:calc(95px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:62vw;padding:5px 9px;text-align:center;font-size:10px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+ #missionHud{display:none!important}
+ #weatherHud{position:absolute;top:calc(123px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:150px;padding:5px 6px;border-radius:8px}
+ #weatherHud #dayTimer{font-size:9px!important;margin-bottom:2px!important}
+ #weatherHud .weatherTitle{font-size:9px;gap:3px}#weatherHud .weatherTitle span:first-child{font-size:13px}
+ #weatherEffect,#weatherHud .weatherTrack{display:none}
+ #flightHud{position:absolute;top:calc(99px + env(safe-area-inset-top));right:calc(5px + env(safe-area-inset-right));left:auto;width:155px;padding:6px 7px;border-radius:9px;z-index:4}
+ #flightHud .flightName{font-size:10px;gap:2px}#flightHud .status{font-size:7px;padding:2px 3px}
+ #flightHud .instruments{gap:2px;margin:3px 0}.instrument{padding:3px 1px}.instrument small{font-size:6px;letter-spacing:0}.instrument strong{font-size:13px;line-height:1.2}
+ #flightHud .throttleRow,#flightHud .throttleBar,#flightHud .switches{display:none}
+ #targetArrow{top:44%;left:50%;z-index:2}#targetSymbol{font-size:23px}#targetLabel{font-size:9px}
+ #radar{position:absolute;z-index:5;left:calc(6px + env(safe-area-inset-left));top:auto;bottom:calc(162px + env(safe-area-inset-bottom));width:125px;max-width:none;padding:5px;border-radius:10px}
+ #radar .radarHeader{font-size:8px;margin:0 0 2px}#radar .radarHeader button{width:22px;height:23px;min-height:23px;font-size:15px}
+ #radar .radarFoot{font-size:7px;flex-wrap:wrap;justify-content:center;line-height:1}
+ #radar.expandedRadar{position:fixed;top:50%;left:50%;bottom:auto;transform:translate(-50%,-50%);width:min(79vw, 66dvh, 410px);max-height:90dvh;padding:10px;z-index:15;background:rgba(6,29,49,.97)}
+ #radar.expandedRadar .radarHeader button{min-width:37px;min-height:35px}
+ #rankTag,#locationTag,.mpChip,#trafficButton,#atcButton{display:none}
+ .cruiseToggle{display:none}
+ #bottomHint{display:none}
+ #raceHud{top:calc(180px + env(safe-area-inset-top));width:190px;padding:8px;z-index:6}
+ #raceHud .eyebrow{font-size:8px}#raceHud .raceStats{font-size:13px}
+ #returnFlight{bottom:calc(176px + env(safe-area-inset-bottom));font-size:10px;min-height:36px;padding:8px 10px;max-width:50vw;white-space:normal}
+ #skyEventBox{top:50%;transform:translate(-50%,-50%);width:min(285px,90vw);max-height:65dvh;overflow:auto}
+ #toast{top:50%;font-size:11px;max-width:75vw;padding:8px 10px}
+ #modal{padding:calc(8px + env(safe-area-inset-top)) calc(7px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(7px + env(safe-area-inset-left))}
+ .modalPanel{width:min(760px,98vw);max-height:calc(100dvh - 22px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:18px 10px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+ .closeBtn{position:sticky;float:right;top:0;min-width:42px;min-height:42px;margin:-3px 1px 0 5px}
+ #modalContent h2{font-size:21px}
+ .selectionCard button,.primaryAction,.planeRow button,.airlineSelectors select,.airlineSelectors input,.worldRoutes select,.worldRoutes input{min-height:44px}
+ .worldRoutes select,.worldRoutes input,.airlineSelectors select,.airlineSelectors input{font-size:16px}
+ .shopLayout{grid-template-columns:1fr}.shopPreview{min-height:170px}#previewCanvas{height:145px}
+ .splash{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+ .splashContent{padding:calc(18px + env(safe-area-inset-top)) 18px calc(25px + env(safe-area-inset-bottom));margin:auto;max-width:650px}
+ .splashTag{font-size:9px}.splashPlane{font-size:46px;line-height:1.2;margin:6px}
+ .splash h1{font-size:clamp(39px,9vw,61px);letter-spacing:-2px}.splashSubtitle{font-size:9px;letter-spacing:3px}
+ .splashContent>p{display:none}.splashMobileNote{display:block;font-size:12px;font-weight:850;margin:12px auto}
+ .chips{margin-top:12px;gap:4px}.chips span{font-size:8px;padding:5px 7px}
+ .playButton{min-width:210px;min-height:49px;padding:10px 18px;font-size:16px;margin:12px auto}
+}
+@media (pointer:coarse) and (min-width:741px){
+ #mobileControls .touchStick{width:150px;height:150px}#mobileControls .stickKnob{width:55px;height:55px}
+ #mobileControls .mobileQuickActions{width:225px}#mobileControls .mobileQuickActions button{min-height:48px;font-size:13px}
+ #mobileControls .mobileThrottle{width:225px}#mobileControls .mobileThrottle label{font-size:12px}
+ #mobileControls .bankBtns button{font-size:12px;min-height:42px}
+ #radar{width:185px;bottom:calc(224px + env(safe-area-inset-bottom))}
+ #flightHud{width:215px}#flightHud .instrument strong{font-size:19px}
+ #mobileStatus{max-width:45vw}
+ #weatherHud{width:200px}
+}
+@media (pointer:coarse) and (max-height:470px){
+ #mobileControls .touchStick{width:108px;height:108px}
+ #mobileControls .mobileQuickActions button{min-height:33px}
+ #mobileControls .bankBtns button{min-height:29px}
+ #mobileControls .mobileThrottle{padding:4px 8px}
+ #radar{bottom:calc(148px + env(safe-area-inset-bottom));width:112px}
+ #weatherHud{top:calc(101px + env(safe-area-inset-top));width:142px}
+ #mobileStatus{top:calc(81px + env(safe-area-inset-top));max-width:44vw}
+ #flightHud{top:calc(93px + env(safe-area-inset-top));width:148px}
+ #raceHud{top:calc(130px + env(safe-area-inset-top))}
+ .splashContent{padding-top:10px}.chips span:nth-child(n+5){display:none}
+}
+@media (pointer:coarse) and (max-width:520px) and (orientation:portrait){
+ #mobileStatus{top:calc(98px + env(safe-area-inset-top));max-width:94vw;width:max-content}
+ #weatherHud{top:calc(126px + env(safe-area-inset-top));left:4px;transform:none;width:142px}
+ #flightHud{top:calc(126px + env(safe-area-inset-top));right:4px;width:174px}
+ #radar{bottom:calc(206px + env(safe-area-inset-bottom));width:135px}
+ #mobileControls .mobileQuickActions{width:148px}#mobileControls .mobileQuickActions button{font-size:9px;min-height:40px}
+ #mobileControls .mobileThrottle{width:148px}
+ #mobileControls .touchStick{width:126px;height:126px}
+ #mobileControls .bankBtns button{font-size:9px;padding:6px}
+ #targetArrow{top:41%}
+}
+@media (max-width:360px){#mobileControls .touchStick{width:108px;height:108px}#mobileControls .mobileQuickActions,#mobileControls .mobileThrottle{width:132px}.brand b{font-size:12px}}
+
+/* V13 simulator controls and instrument readouts */
+.simNav{background:#134c61!important;border:1px solid #6cdaef!important;color:#d9fcff!important}
+.simNav.active{background:#206c4d!important;border-color:#65e9aa!important}
+.simInstruments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:8px 0;padding-top:6px;border-top:1px solid #9ae0ff38}
+.simInstruments>div{min-width:0;text-align:center;border-radius:5px;background:#082840bb;padding:4px 2px;display:flex;flex-direction:column;gap:2px}
+.simInstruments small{font-size:8px;letter-spacing:.03em;color:#a8d9e7}
+.simInstruments b{font:800 11px ui-monospace,Consolas,monospace;color:#f2ffe0;white-space:nowrap}
+.aircraftAlert{font-size:10px;font-weight:900;text-align:center;border-radius:7px;color:#9bffd9;background:#074b3990;padding:5px 7px;margin:4px 0}
+.aircraftAlert.warn{color:#1b2734;background:#ffc85e;animation:simWarn 1s infinite alternate}
+@keyframes simWarn{to{filter:brightness(.78)}}
+#mobileControls .mobileQuickActions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+#mobileControls .mobileQuickActions button{white-space:nowrap}
+@media (max-width:740px){
+ .simInstruments{gap:2px;margin:3px 0;padding:2px 0}
+ .simInstruments small{font-size:7px}
+ .simInstruments b{font-size:9px}
+ .aircraftAlert{font-size:8px;margin:2px 0}
+ #mobileControls .mobileQuickActions{grid-template-columns:repeat(4,minmax(0,1fr))}
+ #mobileControls .mobileQuickActions button{padding:7px 4px;font-size:10px}
+ #mobileControls .mobileQuickActions #mobileFlaps{font-size:9px}
+}
+@media (max-width:430px){#mobileControls .mobileQuickActions button{font-size:9px;padding:6px 2px}}
+
+/* Small phone screens: leave enough room for the flight view and thumb controls. */
+@media(max-width:900px) and (max-height:460px){
+ #flightHud{top:89px;right:5px;width:174px;padding:7px 7px 5px}
+ #flightHud .flightName{font-size:9px;gap:3px}
+ #flightHud .instrument{padding:3px 2px}
+ #flightHud .instrument small{font-size:7px}
+ #flightHud .instrument strong{font-size:15px}
+ #flightHud .simInstruments{gap:2px}
+ #flightHud .simInstruments b{font-size:8px;letter-spacing:-.5px}
+ #flightHud .simInstruments small{font-size:7px}
+ #flightHud .aircraftAlert{font-size:7px;padding:3px}
+ #flightHud .switches{font-size:7px}
+}

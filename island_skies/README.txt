@@ -1,9 +1,24 @@
-WORLD SKIES V10 — INTERNATIONAL FLIGHTS & SUPER RADAR
+WORLD SKIES V13 — SIMULATOR EDITION
 
-Open island_skies/index.html in Chrome, Edge or Firefox. No Internet is needed for single-player.
+This is a gameplay simulator with simplified physics, not a certified flight training simulator or real navigation software.
 
-NEW: ROUTES button or press L, then choose any two countries/territories from the menus. The plane will move to the departure airport and a passenger/cargo/rescue destination is assigned. Take off and press K to cycle normal, x10, x30 express travel. Express automatically follows your route and stops 2.6 game km before the arrival runway. Land manually at normal speed. If you started a race or challenge, you still return to your original flight when finishing or canceling.
+START: Extract ZIP and open island_skies/index.html in a modern browser. Your V12 progression is preserved on the same browser/profile.
 
-NEW: Large 386px radar panel on desktop (224px mobile), with + and - range control, expand button, N cycling range. The route bearing, airports, AI planes and player contacts are marked on the radar. This is a game-scaled flat world; international trip durations depend on route length, aircraft and cruise mode.
+SIMULATOR MODE (default): Speed-dependent lift, wing stalls, aerodynamic drag, flap effects, trim, bank-related lift loss, vertical speed, and (optional) heading / altitude hold autopilot. No random engine failures.
 
-One capital-area simulated airport per country or territory, with 50 extra U.S. state airports. Geography is simplified, airports are NOT certified real-world charts and the 3D scenery remains stylized. Existing V9 airline, rare planes, championships, friends server, random weather, alternating day/night, cockpit view and 3D AI are retained. V9 saved career progress uses the same local key.
+EASY MODE: Press 1 or the SIM/EASY button to return to the previous forgiving V12 flying model.
+
+KEYBOARD:
+1 = toggle SIM / EASY
+2 = cycle flaps UP / 15° / 30°
+3 = autopilot ON / OFF when safely airborne in SIM mode
+Q / Z = change elevator trim down/up
+W / S = throttle; UP/DOWN = pitch; LEFT/RIGHT = steer; A/D = bank
+G = landing gear; C = camera (cockpit view adds moving attitude indicator, airspeed, altitude, V/S, heading); SPACE = brakes
+L = route planner; K = quick cruise; M = world map; N = radar range; V = AI spotting; X = return from race or challenge
+
+PHONE / IPAD: same features via large touch joystick, throttle slider, and SIM / FLAPS / AP buttons. Landscape recommended.
+
+TAKEOFF: select flaps 15°, add throttle, rotate gently only after reaching safe takeoff speed. Retract flaps after climb, gear up, and keep adequate airspeed. Stalling happens with very low speed in SIM mode; lower the nose and add power to recover. For landing, reduce speed, lower gear, use flaps, align with the runway and descend gently. You may switch to EASY anytime.
+
+All previous countries, airports, AI pilots, airline gameplay, radar, quick cruise, races, and return-to-flight remain available. Simulator physics are intentionally simplified and game-scaled. Express cruise overrides much of ordinary physical flight behavior by design.
